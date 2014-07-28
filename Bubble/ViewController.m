@@ -9,7 +9,7 @@
 #import "ViewController.h"
 #import "BubbleView.h"
 
-@interface ViewController ()
+@interface ViewController () <UITextFieldDelegate>
 
 @property (nonatomic,strong) BubbleView *myBubbleView;
 
@@ -35,9 +35,10 @@
 {
     [super viewDidLoad];
 
-    CGRect frame = CGRectMake(20, 314, 280, 145);
+    CGRect frame = CGRectMake(20, 350, 280*2.5f, 145*2.5f);
     
-    self.myBubbleView = [[BubbleView alloc] initWithText:@"Hello world :) these is my bubble" textColor:[UIColor blackColor] fillColor:[UIColor grayColor] strokeColor:[UIColor redColor] lineWidth:self.widthSlider.value angle:30 oppacity:1.0f type:kSpeech inFrame:frame];
+    self.myBubbleView = [[BubbleView alloc] initWithText:@"Hello world :) these is my bubble, My name is Jhon" textColor:[UIColor blueColor] fillColor:[UIColor grayColor] strokeColor:[UIColor redColor] lineWidth:self.widthSlider.value angle:30 oppacity:1.0f type:kSpeech inFrame:frame];
+    [self.myBubbleView setFontSize:26.0f];
     
     [self.view addSubview:self.myBubbleView];
 }
@@ -61,7 +62,7 @@
 }
 - (IBAction)chooseComponentForChangeColor:(UISegmentedControl *)sender {
     //float red, green,blue,alpha;
-    double red, green,blue,alpha;
+    float red, green,blue,alpha;
     switch (sender.selectedSegmentIndex) {
         case 0:{ // text
             UIColor *color = [self.myBubbleView textColor];
@@ -124,6 +125,13 @@
 -(void)touchesBegan:(NSSet *)touches withEvent:(UIEvent *)event
 {
     [self.bubbleTextField resignFirstResponder];
+}
+
+// return key tap
+-(BOOL)textFieldShouldReturn:(UITextField *)textField
+{
+    [textField resignFirstResponder];
+    return YES;
 }
 
 - (IBAction)contactDeveloperTouch:(id)sender {

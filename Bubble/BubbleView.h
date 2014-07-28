@@ -33,4 +33,7 @@ typedef enum BubbleType : NSInteger {
 
 @property(nonatomic) BubbleType type;
 
+// if is 0 or less then is set to 30.0f
+@property(nonatomic) float fontSize;
+
 @end

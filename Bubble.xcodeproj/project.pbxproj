@@ -220,6 +220,9 @@
 				LastUpgradeCheck = 0510;
 				ORGANIZATIONNAME = "Jan Timar";
 				TargetAttributes = {
+					84A1D23E197E6EB9004E0107 = {
+						DevelopmentTeam = 9Q6922742Y;
+					};
 					84A1D25F197E6EB9004E0107 = {
 						TestTargetID = 84A1D23E197E6EB9004E0107;
 					};

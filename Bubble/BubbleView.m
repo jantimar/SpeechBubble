@@ -36,6 +36,7 @@
 @synthesize fillColor = _fillColor;
 @synthesize strokeColor = _strokeColor;
 @synthesize textColor = _textColor;
+@synthesize fontSize = _fontSize;
 
 -(void)setType:(BubbleType)type
 {
@@ -99,18 +100,16 @@
     [self setNeedsDisplay];
 }
 
--(CGRect)contentRect
+-(float)fontSize
 {
-    CGRect bounds;
-    if(self.bounds.size.height > self.bounds.size.width){
-        bounds.origin = CGPointMake(1, self.bounds.size.height/2.0 - self.bounds.size.width/2.0 + 1);
-        bounds.size = CGSizeMake(self.bounds.size.width - 2, self.bounds.size.width/2.0f - 2);
-    }
-    else{
-        bounds.origin = CGPointMake(self.bounds.size.width/2.0 - self.bounds.size.height/2.0 + 1, self.bounds.size.height/4.0f + 1);
-        bounds.size = CGSizeMake(self.bounds.size.height-2, self.bounds.size.height/2.0f -2);
-    }
-    return bounds;
+    if(_fontSize <= 0) return 30.0f;
+    return _fontSize;
+}
+
+-(void)setFontSize:(float)fontSize
+{
+    _fontSize = fontSize;
+    [self setNeedsDisplay];
 }
 
 -(void)setText:(NSString *)text
@@ -125,12 +124,72 @@
 // An empty implementation adversely affects performance during animation.
 - (void)drawRect:(CGRect)rect
 {
-    [self drawCircleInRect:self.contentRect];
+    [super drawRect:rect];
+    [self drawBabbleInRect:rect];
 }
 
--(void)drawCircleInRect:(CGRect)rect
+-(void)drawBabbleInRect:(CGRect)rect
 {
-    [super drawRect:rect];
+    
+    CGRect bubbleRect =  CGRectMake(rect.origin.x + rect.size.width/2.0f, rect.origin.y/2.0f + rect.size.height/2.0f, 0.0f, 0.0f);
+    
+    // Count bubble size depedency by text
+    BOOL textFits = NO;
+    float fontSize = self.fontSize;
+    float fontSizePaddingWidth = 40.0f;
+    float fontSizePaddingHeight = 40.0f;
+    
+    float bubbleSizePaddingWidth = 40.0f;
+    float bubbleSizePaddingHeight = 40.0f;
+    
+    // set text view
+    UITextView *textView = [[UITextView alloc] initWithFrame:CGRectMake(bubbleRect.origin.x + fontSizePaddingWidth,
+                                                                        bubbleRect.origin.y + fontSizePaddingHeight,
+                                                                        bubbleRect.size.width - fontSizePaddingWidth*2,
+                                                                        bubbleRect.size.height - fontSizePaddingHeight*2)];
+    [textView setText:self.text];
+    [textView setTextColor:self.textColor];
+    [textView setBackgroundColor:[UIColor clearColor]];
+    [textView setFont:[UIFont fontWithName:@"Arial" size:fontSize]];
+    [textView setTextAlignment:NSTextAlignmentCenter];
+    
+    // count bubble size and font size
+    while(!textFits) {
+        [textView setFrame:CGRectMake(0,0,
+                                     bubbleRect.size.width - fontSizePaddingWidth*2,
+                                      bubbleRect.size.height - fontSizePaddingHeight*2)];
+        
+        [textView sizeToFit];
+        
+        if(textView.frame.size.width > bubbleRect.size.width - fontSizePaddingWidth*2 || textView.frame.size.height > bubbleRect.size.height - fontSizePaddingHeight*2){
+            
+            if(rect.size.height > bubbleRect.size.height + bubbleSizePaddingHeight && rect.size.width > bubbleRect.size.width + bubbleSizePaddingWidth){
+                bubbleRect.size.height += 4.0f;
+                bubbleRect.size.width += 8.0f;
+                bubbleRect.origin.y -= 2.0f;
+                bubbleRect.origin.x -= 4.0f;
+            } else {
+                fontSize -= 2.0f;
+                [textView setFont:[UIFont fontWithName:@"Arial" size:fontSize]];
+                [textView setTextAlignment:NSTextAlignmentCenter];
+            }
+        }
+        else {
+            CGRect newFrame = CGRectMake(bubbleRect.origin.x + bubbleRect.size.width/2.0f - textView.frame.size.width/2.0f,
+                                         bubbleRect.origin.y + bubbleRect.size.height/2.0f - textView.frame.size.height/2.0f,
+                                         textView.frame.size.width,
+                                         textView.frame.size.height);
+            [textView setFrame:newFrame];
+            
+            textFits = YES;
+        }
+        
+        // Stop infinite looping
+        if(fontSize <= 1.0f) {
+            textFits = YES;
+            self.frame = bubbleRect;
+        }
+    }
     
     // Fill background
     [[UIColor clearColor] setFill];
@@ -139,34 +198,49 @@
     // Get context
     CGContextRef ctx = UIGraphicsGetCurrentContext();
     
-    CGRect bubbleRect = self.contentRect;
-    
     // Setup drawing values
-    CGContextSetFillColorWithColor(ctx, self.fillColor.CGColor);
+    CGContextSetFillColorWithColor(ctx, [self.fillColor colorWithAlphaComponent:self.oppacity].CGColor);
     CGContextSetStrokeColorWithColor(ctx, [self.strokeColor colorWithAlphaComponent:self.oppacity].CGColor);
     CGContextSetLineWidth(ctx, self.bubbleLineWidth);
     
     
-    // Draw ellipse
+    //Draw ellipse
     CGContextFillEllipseInRect(ctx, bubbleRect);
-    CGContextStrokeEllipseInRect(ctx, bubbleRect);
     
-    CGPoint p1 = CGPointZero;
-    CGPoint p2 = CGPointZero;
-    CGPoint p3 = CGPointZero;
-    CGPoint endPoint = CGPointZero;
-    
-    
-    p1 = [self pointOnEllipseRect:bubbleRect withAngle:((self.angle - 15.0f > 0) ? (self.angle - 15.0f + 360.0f) : (self.angle - 15.0f))];
-    p2 = [self pointOnEllipseRect:bubbleRect withAngle:((self.angle + 15.0f > 0) ? (self.angle + 15.0f - 360.0f) : (self.angle + 15.0f))];
-    p3 = CGPointMake(p2.x, p2.y);
-    endPoint = [self pointOnEllipseRect:self.bounds withAngle:self.angle];    
-    
-    
-    // Now draw the bubble arrow
-    
+    // Draw the bubble arrow
     switch (self.type) {
         case kSpeech:{
+            
+            // Draw Strokes
+            CGContextStrokeEllipseInRect(ctx, bubbleRect);
+            
+            /*CGContextSaveGState(ctx);
+            CGPoint center = CGPointMake(bubbleRect.origin.x + bubbleRect.size.width / 2.0, bubbleRect.origin.y + bubbleRect.size.height / 2.0);
+            UIBezierPath *clip = [UIBezierPath bezierPathWithArcCenter:center
+                                                                radius:bubbleRect.size.width
+                                                            startAngle:DegreesToRadians(self.angle + 15.0f)
+                                                              endAngle:DegreesToRadians(self.angle - 15.0f)  clockwise:YES];
+            
+            [clip addLineToPoint:center];
+            [clip closePath];
+            [clip addClip]; UIBezierPath *arc = [UIBezierPath bezierPathWithOvalInRect:bubbleRect];
+            
+            //CGContextSetLineWidth(ctx, self.bubbleLineWidth);
+            [arc setLineWidth:self.bubbleLineWidth];
+            CGContextSetStrokeColorWithColor(ctx, [self.strokeColor colorWithAlphaComponent:self.oppacity].CGColor);
+            [arc stroke];
+            CGContextRestoreGState(ctx);*/
+            
+            CGPoint p1 = CGPointZero;
+            CGPoint p2 = CGPointZero;
+            CGPoint p3 = CGPointZero;
+            CGPoint endPoint = CGPointZero;
+            
+            p1 = [self pointOnEllipseRect:bubbleRect withAngle:(self.angle + 15.0f)];
+            p2 = [self pointOnEllipseRect:bubbleRect withAngle:(self.angle - 15.0f)];
+            p3 = CGPointMake(p2.x, p2.y);
+            endPoint = [self pointOnEllipseRect:self.bounds withAngle:self.angle];
+            
             // Fill
             CGContextBeginPath(ctx);
             CGContextMoveToPoint(ctx, endPoint.x, endPoint.y);
@@ -185,22 +259,54 @@
         }
             break;
         case kThink:{
-            CGRect littleBubble1 = CGRectMake(
-                                              (self.angle > 90 && self.angle <= 270) ? (endPoint.x + bubbleRect.size.width/5.0f) : (endPoint.x - bubbleRect.size.width/5.0f),
-                                              (self.angle > 0 && self.angle <= 180) ? (endPoint.y - bubbleRect.size.height/5.0f) : (endPoint.y + bubbleRect.size.height/5.0f),
-                                              bubbleRect.size.width/30.0f, bubbleRect.size.height/30.0f);
+            
+            // Draw Strokes
+            CGContextStrokeEllipseInRect(ctx, bubbleRect);
+            
+            CGRect littleBubble1;
+            CGRect littleBubble2;
+            CGRect littleBubble3;
             
             
-            CGRect littleBubble2 = CGRectMake(
-                                              (self.angle > 90 && self.angle <= 270) ? (endPoint.x + bubbleRect.size.width/4.0f) : (endPoint.x - bubbleRect.size.width/4.0f),
-                                              (self.angle > 0 && self.angle <= 180) ? (endPoint.y - bubbleRect.size.height/4.0f) : (endPoint.y + bubbleRect.size.height/4.0f),
-                                              bubbleRect.size.width/20.0f, bubbleRect.size.height/20.0f);
+            littleBubble1.size.height = bubbleRect.size.height/30.0f;
+            littleBubble1.size.width = bubbleRect.size.width/30.0f;
+            
+            CGPoint littleBubblePoint1 = [self pointOnEllipseRect:CGRectMake(bubbleRect.origin.x - bubbleRect.size.width/10.0f*3.0f,
+                                                                             bubbleRect.origin.y - bubbleRect.size.height/10.0f*3.0f,
+                                                                             bubbleRect.size.width + (bubbleRect.size.width/10.0f*3.0f)*2.0f,
+                                                                             bubbleRect.size.height + (bubbleRect.size.height/10.0f*3.0f)*2.0f)
+                                                        withAngle:self.angle];
+            
+            littleBubble1.origin.y = littleBubblePoint1.y;
+            littleBubble1.origin.x = littleBubblePoint1.x;
             
             
-            CGRect littleBubble3 = CGRectMake(
-                                              (self.angle > 90 && self.angle <= 270) ? (endPoint.x + bubbleRect.size.width/3.0f) : (endPoint.x - bubbleRect.size.width/3.0f),
-                                              (self.angle > 0 && self.angle <= 180) ? (endPoint.y - bubbleRect.size.height/3.0f) : (endPoint.y + bubbleRect.size.height/3.0f),
-                                              bubbleRect.size.width/10.0f, bubbleRect.size.height/10.0f);
+            //----
+            littleBubble2.size.height = bubbleRect.size.height/20.0f;
+            littleBubble2.size.width = bubbleRect.size.width/20.0f;
+            
+            
+            CGPoint littleBubblePoint2 = [self pointOnEllipseRect:CGRectMake(bubbleRect.origin.x - bubbleRect.size.width/10.0f*2.0f,
+                                                                             bubbleRect.origin.y - bubbleRect.size.height/10.0f*2.0f,
+                                                                             bubbleRect.size.width + (bubbleRect.size.width/10.0f*2.0f)*2.0f,
+                                                                             bubbleRect.size.height + (bubbleRect.size.height/10.0f*2.0f)*2.0f)
+                                                        withAngle:self.angle];
+            littleBubble2.origin.y = littleBubblePoint2.y;
+            littleBubble2.origin.x = littleBubblePoint2.x;
+            
+            
+            //----
+            littleBubble3.size.height = bubbleRect.size.height/10.0f;
+            littleBubble3.size.width = bubbleRect.size.width/10.0f;
+            
+            CGPoint littleBubblePoint3 = [self pointOnEllipseRect:CGRectMake(bubbleRect.origin.x - bubbleRect.size.width/10.0f,
+                                                                             bubbleRect.origin.y - bubbleRect.size.height/10.0f,
+                                                                             bubbleRect.size.width + (bubbleRect.size.width/10.0f)*2.0f,
+                                                                             bubbleRect.size.height + (bubbleRect.size.height/10.0f)*2.0f)
+                                                        withAngle:self.angle];
+            
+            littleBubble3.origin.y = littleBubblePoint3.y;
+            littleBubble3.origin.x = littleBubblePoint3.x;
             
             
             CGContextFillEllipseInRect(ctx, littleBubble1);
@@ -216,57 +322,12 @@
             break;
     }
     
-    
     // Draw text
-    BOOL textFits = NO;
-    float fontSize = 30.0f;
-    float fontSizePaddingWidth = 60.0f;
-    float fontSizePaddingHeight = 2.0f;
-    
-    NSString *content = [self stringToLines:self.text whereOneLineHaveMinimumChars:10];
-    while(!textFits) {
-        // Create attributes
-        
-        NSDictionary *attributes = [NSDictionary dictionaryWithObjectsAndKeys:
-                                    [UIFont fontWithName:@"Arial" size:fontSize], NSFontAttributeName,
-                                    self.textColor, NSForegroundColorAttributeName,
-                                    nil];
-        
-        NSAttributedString *currentText = [[NSAttributedString alloc] initWithString:content attributes: attributes];
-        
-        
-        CGSize attrSize = [currentText size];
-        if(attrSize.width > bubbleRect.size.width - fontSizePaddingWidth || attrSize.height > bubbleRect.size.height - fontSizePaddingHeight){
-            fontSize-=2.0f;
-        }
-        else {
-            float textX = bubbleRect.origin.x + bubbleRect.size.width/2 - attrSize.width/2;
-            float textY = bubbleRect.origin.y + bubbleRect.size.height/2 - attrSize.height/2;
-            [currentText drawAtPoint:CGPointMake(textX, textY)];
-            
-            textFits = YES;
-        }
-        
-        // Stop infinite looping
-        if(fontSize <= 1.0f) {
-            textFits = YES;
-        }
-    }
+    for(UIView *view in [self subviews])
+        [view removeFromSuperview];
+    [self addSubview:textView];
 }
 
--(NSString *)stringToLines:(NSString *)inputString whereOneLineHaveMinimumChars:(int)minimumChars
-{
-    NSUInteger length = [inputString length];
-    for(int positionActualChar = minimumChars;positionActualChar < length;positionActualChar++){
-        
-        unichar actualChar = [inputString characterAtIndex:positionActualChar];
-        if(actualChar == ' '){
-            inputString = [inputString stringByReplacingCharactersInRange:NSMakeRange(positionActualChar, 0) withString:@"\n"];
-            positionActualChar += minimumChars;
-        }
-    }
-    return inputString;
-}
 
 -(CGPoint)pointOnEllipseRect:(CGRect)ellipseRect withAngle:(CGFloat)angle
 {
