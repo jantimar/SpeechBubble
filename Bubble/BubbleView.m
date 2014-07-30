@@ -139,8 +139,8 @@
     float fontSizePaddingWidth = 40.0f;
     float fontSizePaddingHeight = 40.0f;
     
-    float bubbleSizePaddingWidth = 40.0f;
-    float bubbleSizePaddingHeight = 40.0f;
+    float bubbleSizePaddingWidth = 60.0f;
+    float bubbleSizePaddingHeight = 60.0f;
     
     // set text view
     UITextView *textView = [[UITextView alloc] initWithFrame:CGRectMake(bubbleRect.origin.x + fontSizePaddingWidth,
@@ -162,13 +162,14 @@
         [textView sizeToFit];
         
         if(textView.frame.size.width > bubbleRect.size.width - fontSizePaddingWidth*2 || textView.frame.size.height > bubbleRect.size.height - fontSizePaddingHeight*2){
-            
             if(rect.size.height > bubbleRect.size.height + bubbleSizePaddingHeight && rect.size.width > bubbleRect.size.width + bubbleSizePaddingWidth){
+                //change bubble size
                 bubbleRect.size.height += 4.0f;
                 bubbleRect.size.width += 8.0f;
                 bubbleRect.origin.y -= 2.0f;
                 bubbleRect.origin.x -= 4.0f;
             } else {
+                //change font size
                 fontSize -= 2.0f;
                 [textView setFont:[UIFont fontWithName:@"Arial" size:fontSize]];
                 [textView setTextAlignment:NSTextAlignmentCenter];
@@ -203,78 +204,66 @@
     CGContextSetStrokeColorWithColor(ctx, [self.strokeColor colorWithAlphaComponent:self.oppacity].CGColor);
     CGContextSetLineWidth(ctx, self.bubbleLineWidth);
     
-    
-    //Draw ellipse
-    CGContextFillEllipseInRect(ctx, bubbleRect);
-    
     // Draw the bubble arrow
     switch (self.type) {
         case kSpeech:{
             
-            // Draw Strokes
-            CGContextStrokeEllipseInRect(ctx, bubbleRect);
+            // Draw bubble
+            CGPoint startPoint = [self pointOnEllipseRect:bubbleRect withAngle:(self.angle + 15.0f)];
+            CGPoint endPoint = [self pointOnEllipseRect:self.bounds withAngle:self.angle];
             
-            /*CGContextSaveGState(ctx);
-            CGPoint center = CGPointMake(bubbleRect.origin.x + bubbleRect.size.width / 2.0, bubbleRect.origin.y + bubbleRect.size.height / 2.0);
-            UIBezierPath *clip = [UIBezierPath bezierPathWithArcCenter:center
-                                                                radius:bubbleRect.size.width
-                                                            startAngle:DegreesToRadians(self.angle + 15.0f)
-                                                              endAngle:DegreesToRadians(self.angle - 15.0f)  clockwise:YES];
+            CGFloat height = bubbleRect.size.height;
+            CGFloat width = bubbleRect.size.width;
             
-            [clip addLineToPoint:center];
-            [clip closePath];
-            [clip addClip]; UIBezierPath *arc = [UIBezierPath bezierPathWithOvalInRect:bubbleRect];
+            CGFloat cx = bubbleRect.origin.x + width/2.0f;
+            CGFloat cy = bubbleRect.origin.y + height/2.0f;
+            
+            CGFloat r = width*0.5;
+            
+            CGMutablePathRef pathForFill = CGPathCreateMutable();
+            CGAffineTransform transformForFill = CGAffineTransformMakeTranslation(cx, cy);
+            transformForFill = CGAffineTransformConcat(CGAffineTransformMakeScale(1.0, height/width), transformForFill);
+            CGPathAddArc(pathForFill, &transformForFill, 0, 0, r, DegreesToRadians(self.angle + 15.0f), DegreesToRadians(self.angle - 15.0f), false);
+            CGContextAddPath(ctx, pathForFill);
+            
+            CGContextAddLineToPoint(ctx, endPoint.x, endPoint.y);
+            CGContextAddLineToPoint(ctx, startPoint.x, startPoint.y);
+            
+            CGContextFillPath(ctx);
+            CFRelease(pathForFill);
+            
+            // draw stroke
+            CGMutablePathRef pathForStroke = CGPathCreateMutable();
+            CGAffineTransform transformForStroke = CGAffineTransformMakeTranslation(cx, cy);
+            transformForStroke = CGAffineTransformConcat(CGAffineTransformMakeScale(1.0, height/width), transformForStroke);
+            CGPathAddArc(pathForStroke, &transformForStroke, 0, 0, r, DegreesToRadians(self.angle + 15.0f), DegreesToRadians(self.angle - 15.0f), false);
+            CGContextAddPath(ctx, pathForStroke);
+            
+            CGContextAddLineToPoint(ctx, endPoint.x, endPoint.y);
+            CGContextAddLineToPoint(ctx, startPoint.x, startPoint.y);
             
             //CGContextSetLineWidth(ctx, self.bubbleLineWidth);
-            [arc setLineWidth:self.bubbleLineWidth];
-            CGContextSetStrokeColorWithColor(ctx, [self.strokeColor colorWithAlphaComponent:self.oppacity].CGColor);
-            [arc stroke];
-            CGContextRestoreGState(ctx);*/
-            
-            CGPoint p1 = CGPointZero;
-            CGPoint p2 = CGPointZero;
-            CGPoint p3 = CGPointZero;
-            CGPoint endPoint = CGPointZero;
-            
-            p1 = [self pointOnEllipseRect:bubbleRect withAngle:(self.angle + 15.0f)];
-            p2 = [self pointOnEllipseRect:bubbleRect withAngle:(self.angle - 15.0f)];
-            p3 = CGPointMake(p2.x, p2.y);
-            endPoint = [self pointOnEllipseRect:self.bounds withAngle:self.angle];
-            
-            // Fill
-            CGContextBeginPath(ctx);
-            CGContextMoveToPoint(ctx, endPoint.x, endPoint.y);
-            CGContextAddLineToPoint(ctx, p1.x, p1.y);
-            CGContextAddQuadCurveToPoint(ctx, p3.x, p3.y, p2.x, p2.y);
-            CGContextClosePath(ctx);
-            CGContextFillPath(ctx);
-            
-            // Stroke
-            CGContextBeginPath(ctx);
-            CGContextMoveToPoint(ctx, endPoint.x, endPoint.y);
-            CGContextAddLineToPoint(ctx, p1.x, p1.y);
-            CGContextMoveToPoint(ctx, endPoint.x, endPoint.y);
-            CGContextAddLineToPoint(ctx, p2.x, p2.y);
             CGContextStrokePath(ctx);
+            CFRelease(pathForStroke);
         }
             break;
         case kThink:{
             
             // Draw Strokes
+            CGContextFillEllipseInRect(ctx, bubbleRect);
             CGContextStrokeEllipseInRect(ctx, bubbleRect);
             
             CGRect littleBubble1;
             CGRect littleBubble2;
             CGRect littleBubble3;
             
-            
             littleBubble1.size.height = bubbleRect.size.height/30.0f;
             littleBubble1.size.width = bubbleRect.size.width/30.0f;
             
-            CGPoint littleBubblePoint1 = [self pointOnEllipseRect:CGRectMake(bubbleRect.origin.x - bubbleRect.size.width/10.0f*3.0f,
-                                                                             bubbleRect.origin.y - bubbleRect.size.height/10.0f*3.0f,
-                                                                             bubbleRect.size.width + (bubbleRect.size.width/10.0f*3.0f)*2.0f,
-                                                                             bubbleRect.size.height + (bubbleRect.size.height/10.0f*3.0f)*2.0f)
+            CGPoint littleBubblePoint1 = [self pointOnEllipseRect:CGRectMake(bubbleRect.origin.x - bubbleRect.size.width/10.0f*2.5f,
+                                                                             bubbleRect.origin.y - bubbleRect.size.height/10.0f*2.5f,
+                                                                             bubbleRect.size.width + (bubbleRect.size.width/10.0f*2.5f)*2.0f,
+                                                                             bubbleRect.size.height + (bubbleRect.size.height/10.0f*2.5f)*2.0f)
                                                         withAngle:self.angle];
             
             littleBubble1.origin.y = littleBubblePoint1.y;
@@ -286,10 +275,10 @@
             littleBubble2.size.width = bubbleRect.size.width/20.0f;
             
             
-            CGPoint littleBubblePoint2 = [self pointOnEllipseRect:CGRectMake(bubbleRect.origin.x - bubbleRect.size.width/10.0f*2.0f,
-                                                                             bubbleRect.origin.y - bubbleRect.size.height/10.0f*2.0f,
-                                                                             bubbleRect.size.width + (bubbleRect.size.width/10.0f*2.0f)*2.0f,
-                                                                             bubbleRect.size.height + (bubbleRect.size.height/10.0f*2.0f)*2.0f)
+            CGPoint littleBubblePoint2 = [self pointOnEllipseRect:CGRectMake(bubbleRect.origin.x - bubbleRect.size.width/10.0f*1.5f,
+                                                                             bubbleRect.origin.y - bubbleRect.size.height/10.0f*1.5f,
+                                                                             bubbleRect.size.width + (bubbleRect.size.width/10.0f*1.5f)*2.0f,
+                                                                             bubbleRect.size.height + (bubbleRect.size.height/10.0f*1.5f)*2.0f)
                                                         withAngle:self.angle];
             littleBubble2.origin.y = littleBubblePoint2.y;
             littleBubble2.origin.x = littleBubblePoint2.x;
@@ -299,10 +288,10 @@
             littleBubble3.size.height = bubbleRect.size.height/10.0f;
             littleBubble3.size.width = bubbleRect.size.width/10.0f;
             
-            CGPoint littleBubblePoint3 = [self pointOnEllipseRect:CGRectMake(bubbleRect.origin.x - bubbleRect.size.width/10.0f,
-                                                                             bubbleRect.origin.y - bubbleRect.size.height/10.0f,
-                                                                             bubbleRect.size.width + (bubbleRect.size.width/10.0f)*2.0f,
-                                                                             bubbleRect.size.height + (bubbleRect.size.height/10.0f)*2.0f)
+            CGPoint littleBubblePoint3 = [self pointOnEllipseRect:CGRectMake(bubbleRect.origin.x - bubbleRect.size.width/10.0f*0.5f,
+                                                                             bubbleRect.origin.y - bubbleRect.size.height/10.0f*0.5f,
+                                                                             bubbleRect.size.width + (bubbleRect.size.width/10.0f*0.5f)*2.0f,
+                                                                             bubbleRect.size.height + (bubbleRect.size.height/10.0f*0.5f)*2.0f)
                                                         withAngle:self.angle];
             
             littleBubble3.origin.y = littleBubblePoint3.y;
